@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:17
+    container_name: order_management_db
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: order_management
+      POSTGRES_USER: order_admin
+      POSTGRES_PASSWORD: order_password
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
