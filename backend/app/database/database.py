@@ -1,15 +1,22 @@
+import os
+
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 
-DATABASE_URL = "postgresql+psycopg://order_admin:order_password@localhost:5432/order_management"
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is not set")
 
 
 engine = create_engine(
     DATABASE_URL,
     echo=False,
 )
-
 
 SessionLocal = sessionmaker(
     bind=engine,
