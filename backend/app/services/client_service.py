@@ -4,6 +4,9 @@ from app.models.client import Client
 from app.schemas.client import ClientCreate
 from app.schemas.client import ClientCreate, ClientUpdate
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 def create_client(db: Session, client_data: ClientCreate):
     existing_client = (
@@ -18,6 +21,11 @@ def create_client(db: Session, client_data: ClientCreate):
     client = Client(
         nom=client_data.nom,
         email=client_data.email,
+    )
+
+    logger.info(
+    "Création d'un client avec l'email %s",
+    client_data.email,
     )
 
     db.add(client)
@@ -60,6 +68,11 @@ def update_client(db: Session, client_id: int, client_data: ClientUpdate):
             raise ValueError("Un client avec cet email existe déjà.")
 
         client.email = client_data.email
+    
+    logger.info(
+    "Mise à jour du client %s",
+    client_id,
+    )
 
     db.commit()
     db.refresh(client)

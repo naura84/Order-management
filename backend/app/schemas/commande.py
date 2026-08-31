@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
 
-from backend.app.models.commande import StatutCommande
+from app.models.commande import StatutCommande
 
 
 class CommandeCreate(BaseModel):

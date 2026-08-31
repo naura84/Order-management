@@ -7,6 +7,10 @@ from app.models.client import Client
 from app.models.commande import Commande, StatutCommande
 from app.schemas.commande import CommandeCreate, CommandeUpdate
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # List of allowed status transitions for a Commande
 TRANSITIONS_AUTORISEES = {
     StatutCommande.BROUILLON: {
@@ -41,6 +45,11 @@ def create_commande(db: Session, commande_data: CommandeCreate):
         montant_total=Decimal("0.00"),
     )
 
+    logger.info(
+    "Création d'une commande pour le client %s",
+    commande_data.client_id,
+    )
+
     db.add(commande)
     db.commit()
     db.refresh(commande)
@@ -73,11 +82,24 @@ def update_commande(
         nouveau_statut = commande_data.statut
 
         if nouveau_statut not in TRANSITIONS_AUTORISEES[commande.statut]:
+            logger.warning(
+                "Transition de statut non autorisée pour la commande %s : %s → %s",
+                commande_id,
+                commande.statut,
+                nouveau_statut,
+            )   
             raise ValueError(
                 f"Transition impossible : "
                 f"{commande.statut} → {nouveau_statut}"
             )
-
+        
+        logger.info(
+            "Mise à jour du statut de la commande %s de %s à %s",
+            commande_id,
+            commande.statut,
+            nouveau_statut,
+            )
+        
         commande.statut = nouveau_statut
 
     db.commit()
