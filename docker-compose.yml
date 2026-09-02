@@ -15,5 +15,20 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  api:
+    build: .
+    container_name: order_management_api
+    restart: unless-stopped
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      DATABASE_URL: postgresql+psycopg://order_admin:order_password@db:5432/order_management
+      API_KEY: test-api-key
+
+    depends_on:
+      - db
+
 volumes:
   postgres_data:
