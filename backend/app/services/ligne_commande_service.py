@@ -12,12 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 def check_commande_modifiable(commande: Commande):
-    if commande.statut in {
-        StatutCommande.LIVREE,
-        StatutCommande.ANNULEE,
-    }:
+    if commande.statut != StatutCommande.BROUILLON:
         raise ValueError(
-            "Impossible de modifier une commande terminée."
+            "Impossible de modifier une commande qui n'est pas en brouillon."
         )
 
 def recalculate_total(db: Session, commande: Commande):

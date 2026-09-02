@@ -68,8 +68,41 @@ def get_commande(db: Session, commande_id: int):
 
     return commande
 
-def get_commandes(db: Session):
-    return db.query(Commande).all()
+def get_commandes(
+    db: Session,
+    client_id: int | None = None,
+    statut: StatutCommande | None = None,
+    montant_min: Decimal | None = None,
+    montant_max: Decimal | None = None,
+    page: int = 1,
+    page_size: int = 10,
+):
+    query = db.query(Commande)
+
+    if client_id is not None:
+        query = query.filter(Commande.client_id == client_id)
+
+    if statut is not None:
+        query = query.filter(Commande.statut == statut)
+
+    if montant_min is not None:
+        query = query.filter(Commande.montant_total >= montant_min)
+
+    if montant_max is not None:
+        query = query.filter(Commande.montant_total <= montant_max)
+
+    total = query.count()
+
+    offset = (page - 1) * page_size
+
+    commandes = (
+        query
+        .offset(offset)
+        .limit(page_size)
+        .all()
+    )
+
+    return commandes, total
 
 def update_commande(
     db: Session,

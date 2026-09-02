@@ -1,10 +1,12 @@
 from sqlalchemy.orm import Session
 
 from app.models.client import Client
-from app.schemas.client import ClientCreate
 from app.schemas.client import ClientCreate, ClientUpdate
 
 import logging
+
+class DuplicateEmailError(Exception):
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +18,9 @@ def create_client(db: Session, client_data: ClientCreate):
     )
 
     if existing_client:
-        raise ValueError("Un client avec cet email existe déjà.")
+        raise DuplicateEmailError(
+            "Un client avec cet email existe déjà."
+        )
 
     client = Client(
         nom=client_data.nom,
@@ -65,7 +69,9 @@ def update_client(db: Session, client_id: int, client_data: ClientUpdate):
         )
 
         if existing_client:
-            raise ValueError("Un client avec cet email existe déjà.")
+            raise DuplicateEmailError(
+                "Un client avec cet email existe déjà."
+            )
 
         client.email = client_data.email
     

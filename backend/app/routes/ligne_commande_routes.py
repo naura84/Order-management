@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.auth import verify_api_key
 from app.database.database import get_db
 from app.schemas.ligne_commande import (
     LigneCommandeCreate,
@@ -16,9 +17,10 @@ from app.services.ligne_commande_service import (
 router = APIRouter(
     prefix="/commandes",
     tags=["Lignes de commande"],
+    dependencies=[Depends(verify_api_key)],
 )
 
-@router.post("/{commande_id}/lignes")
+@router.post("/{commande_id}/lignes", status_code=201)
 def create_ligne(
     commande_id: int,
     ligne_data: LigneCommandeCreate,
@@ -49,7 +51,7 @@ def read_lignes_commande(
             detail=str(e),
         )
 
-@router.patch("/lignes/{ligne_id}")
+@router.patch("/lignes/{ligne_id}", status_code=201)
 def update_ligne_route(
     ligne_id: int,
     ligne_data: LigneCommandeUpdate,
@@ -68,7 +70,7 @@ def update_ligne_route(
         )
 
 
-@router.delete("/lignes/{ligne_id}")
+@router.delete("/lignes/{ligne_id}", status_code=201)
 def delete_ligne_route(
     ligne_id: int,
     db: Session = Depends(get_db),

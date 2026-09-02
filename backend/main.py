@@ -1,3 +1,7 @@
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from fastapi import APIRouter, FastAPI
 from app.routes.client_routes import router as client_router
 from app.routes.commandes_routes import router as commande_router

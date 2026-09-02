@@ -1,47 +1,58 @@
+from collections import Counter
 from decimal import Decimal
 
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.models.commande import Commande, StatutCommande
+from app.models.client import Client
+from app.models.commande import Commande
 
 
-def get_stats_commandes(db: Session):
-    nombre_commandes = (
-        db.query(func.count(Commande.id))
-        .scalar()
+def get_stats_client(
+    db: Session,
+    client_id: int,
+):
+    client = (
+        db.query(Client)
+        .filter(Client.id == client_id)
+        .first()
     )
 
-    chiffre_affaires = (
-    db.query(func.sum(Commande.montant_total))
-    .scalar()
-    or Decimal("0.00")
+    if not client:
+        raise ValueError("Client introuvable.")
+
+    commandes = (
+        db.query(Commande)
+        .filter(Commande.client_id == client_id)
+        .all()
     )
-    
-    chiffre_affaires = chiffre_affaires.quantize(Decimal("0.01"))
 
-    montant_moyen = (
-    db.query(func.avg(Commande.montant_total))
-    .scalar()
-    or Decimal("0.00")
+    nombre_commandes = len(commandes)
+
+    montant_total = sum(
+        (commande.montant_total for commande in commandes),
+        Decimal("0.00"),
     )
-    
-    montant_moyen = montant_moyen.quantize(Decimal("0.01"))
 
-    commandes_par_statut = {}
+    panier_moyen = (
+        montant_total / nombre_commandes
+        if nombre_commandes > 0
+        else Decimal("0.00")
+    )
 
-    for statut in StatutCommande:
-        nombre = (
-            db.query(func.count(Commande.id))
-            .filter(Commande.statut == statut)
-            .scalar()
-        )
+    statuts = Counter(
+        commande.statut.value
+        for commande in commandes
+    )
 
-        commandes_par_statut[statut.value] = nombre
+    statut_plus_frequent = (
+        statuts.most_common(1)[0][0]
+        if statuts
+        else None
+    )
 
     return {
         "nombre_commandes": nombre_commandes,
-        "chiffre_affaires": chiffre_affaires,
-        "montant_moyen": montant_moyen,
-        "commandes_par_statut": commandes_par_statut,
+        "montant_total": montant_total,
+        "panier_moyen": panier_moyen,
+        "statut_plus_frequent": statut_plus_frequent,
     }

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.auth import verify_api_key
 from app.database.database import get_db
 from app.schemas.client import ClientCreate, ClientUpdate
 from app.services.client_service import (
@@ -10,20 +11,29 @@ from app.services.client_service import (
     get_client_by_email,
     update_client,
     delete_client,
+    DuplicateEmailError,
 )
 
 router = APIRouter(
     prefix="/clients",
     tags=["Clients"],
+    dependencies=[Depends(verify_api_key)],
 )
 
-@router.post("/")
+@router.post("", status_code=201)
 def create(
     client_data: ClientCreate,
     db: Session = Depends(get_db),
 ):
     try:
         return create_client(db, client_data)
+
+    except DuplicateEmailError as e:
+        raise HTTPException(
+            status_code=409,
+            detail=str(e),
+        )
+
     except ValueError as e:
         raise HTTPException(
             status_code=400,
@@ -31,7 +41,7 @@ def create(
         )
 
 
-@router.get("/")
+@router.get("")
 def read_clients(
     db: Session = Depends(get_db),
 ):
@@ -76,6 +86,13 @@ def update(
 ):
     try:
         return update_client(db, client_id, client_data)
+
+    except DuplicateEmailError as e:
+        raise HTTPException(
+            status_code=409,
+            detail=str(e),
+        )
+
     except ValueError as e:
         raise HTTPException(
             status_code=400,
