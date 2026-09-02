@@ -3,32 +3,39 @@ services:
     image: postgres:17
     container_name: order_management_db
     restart: unless-stopped
-
     environment:
       POSTGRES_DB: order_management
       POSTGRES_USER: order_admin
       POSTGRES_PASSWORD: order_password
-
     ports:
       - "5432:5432"
-
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: order_management_api
     restart: unless-stopped
-
     ports:
       - "8000:8000"
-
     environment:
       DATABASE_URL: postgresql+psycopg://order_admin:order_password@db:5432/order_management
       API_KEY: test-api-key
-
     depends_on:
       - db
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: order_management_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
 
 volumes:
   postgres_data:

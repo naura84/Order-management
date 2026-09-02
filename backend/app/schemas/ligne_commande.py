@@ -7,7 +7,7 @@ class LigneCommandeCreate(BaseModel):
     reference_article: str
     libelle: str
     quantite: int = Field(gt=0)
-    prix_unitaire: Decimal = Field(gt=0)
+    prix_unitaire: Decimal = Field(ge=0)
 
 
 class LigneCommandeUpdate(BaseModel):

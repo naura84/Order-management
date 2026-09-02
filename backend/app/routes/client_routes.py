@@ -13,6 +13,7 @@ from app.services.client_service import (
     delete_client,
     DuplicateEmailError,
 )
+from app.services.stat_service import get_stats_client
 
 router = APIRouter(
     prefix="/clients",

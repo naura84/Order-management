@@ -13,8 +13,9 @@ The project was developed as part of a backend technical assessment, with a focu
 - Order line management
 - Controlled order status transitions
 - Automatic order total calculation
-- Customer statistics
-- Filtering and pagination
+- Customer statistics: order count, total amount, average basket, and most frequent status
+- Order filters by client, status, and minimum/maximum amount
+- Order pagination
 - API key authentication
 - PostgreSQL database
 - SQLAlchemy ORM
@@ -27,7 +28,7 @@ The project was developed as part of a backend technical assessment, with a focu
 
 ## Tech Stack
 
-- **Python 3.12**
+- **Python 3.14**
 - **FastAPI**
 - **Pydantic**
 - **SQLAlchemy**
@@ -35,6 +36,7 @@ The project was developed as part of a backend technical assessment, with a focu
 - **Alembic**
 - **Pytest**
 - **Docker / Docker Compose**
+- **React / Vite**
 
 ---
 
@@ -110,7 +112,7 @@ Once an order is **livrée** or **annulée**, its status cannot be changed.
 
 ---
 
-## API Endpoints
+## API
 
 ### Clients
 
@@ -127,13 +129,13 @@ Once an order is **livrée** or **annulée**, its status cannot be changed.
 | `POST` | `/commandes/{id}/lignes` | Add an order line |
 | `PATCH` | `/commandes/{id}/statut` | Change order status |
 | `GET` | `/commandes/{id}` | Retrieve an order with its lines |
-| `GET` | `/commandes` | List, filter, and paginate orders |
+| `GET` | `/commandes` | List paginated orders with optional filters |
 
 ### Statistics
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
-| `GET` | `/stats/clients/{id}` | Retrieve customer order statistics |
+| `GET` | `/stats/clients/{id}` | Retrieve the number of orders, total amount ordered, average basket, and most frequent status |
 
 The order listing supports:
 
@@ -164,46 +166,43 @@ This approach was chosen because the technical assessment requires a basic authe
 
 ---
 
-## Project Structure
+## Architecture
+
+The project is organized into three main layers:
+
+- **Frontend**: React application for viewing and managing clients, orders, and order lines.
+- **Backend**: REST API developed with FastAPI, responsible for business logic, validation, and data access.
+- **Database**: PostgreSQL used to persist clients, orders, and order lines.
+
+### Project Structure
 
 ```text
 order-management/
-|
-+-- Dockerfile
-+-- docker-compose.yml
-|
-+-- backend/
-    |
-    +-- main.py
-    +-- requirements.txt
-    +-- alembic.ini
-    |
-    +-- alembic/
-    |   +-- versions/
-    |
-    +-- app/
-    |   +-- routes/
-    |   +-- services/
-    |   +-- models/
-    |   +-- schemas/
-    |   +-- database/
-    |   +-- core/
-    |   +-- utils/
-    |
-    +-- tests/
-        +-- conftest.py
-        +-- test_auth.py
-        +-- test_client.py
-        +-- test_commande.py
-        +-- test_ligne.py
-        +-- test_stats.py
+├── backend/
+│   ├── app/
+│   │   ├── auth.py
+│   │   ├── database/
+│   │   ├── models/
+│   │   ├── routes/
+│   │   ├── schemas/
+│   │   └── services/
+│   ├── tests/
+│   ├── main.py
+│   ├── requirements.txt
+│   └── alembic.ini
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   └── services/
+│   ├── package.json
+│   └── Dockerfile
+│
+├── Dockerfile
+├── docker-compose.yml
+└── README.md
 ```
-
----
-
-## Architecture
-
-The project follows a layered architecture separating HTTP handling, business logic, database models, and validation schemas.
 
 ### Routes
 
@@ -236,6 +235,34 @@ SQLAlchemy models represent the database entities and their relationships.
 ### Schemas
 
 Pydantic schemas validate API inputs and structure API responses.
+
+## Frontend
+
+The frontend is developed with React and Vite.
+
+It allows users to:
+
+- View the dashboard
+- View the order list
+- Search and filter orders by client, status, and amount
+- Navigate between order pages
+- View order details
+- Add lines to an order
+- Create a new order
+- View registered clients
+- Create a new client
+- View client details and statistics
+- Track order status transitions
+
+### Main Pages
+
+- `/` - Dashboard
+- `/commandes` - Order list
+- `/commandes/nouvelle` - Create an order
+- `/commandes/{id}` - Order details
+- `/commandes/{id}/lignes/nouvelle` - Add an order line
+- `/clients` - Client list and client creation
+- `/clients/{id}` - Client details and statistics
 
 ---
 
@@ -291,10 +318,6 @@ The response provides:
 
 Pagination prevents the API from returning an unnecessarily large number of records in a single request.
 
-### Tests
-
-The test suite uses a dedicated SQLite database and focuses particularly on business rules and edge cases, rather than only testing successful HTTP requests.
-
 ---
 
 ## Database Migrations
@@ -323,41 +346,47 @@ The seed script does not insert duplicate initial data if clients already exist 
 
 ---
 
-## Getting Started
+## Installation
 
-### Prerequisites
+### Local Installation
 
-- Docker
-- Docker Compose
-
-### Start the application
+#### Backend
 
 From the project root:
 
 ```bash
-docker compose up --build
+cd backend
+pip install -r requirements.txt
 ```
 
-This starts:
+Configure the required environment variables, including:
 
-- The FastAPI API
-- The PostgreSQL database
+```text
+DATABASE_URL=postgresql+psycopg://order_admin:order_password@localhost:5432/order_management
+API_KEY=test-api-key
+```
+
+Start the API:
+
+```bash
+uvicorn main:app --reload
+```
 
 The API is available at `http://localhost:8000`.
 
-### Apply migrations
+Swagger documentation is available at `http://localhost:8000/docs`.
 
-From a second terminal:
+#### Frontend
 
-```bash
-docker compose exec api alembic upgrade head
-```
-
-### Load seed data
+In another terminal:
 
 ```bash
-docker compose exec api python -m app.database.seed
+cd frontend
+npm install
+npm run dev
 ```
+
+The frontend is available at `http://localhost:5173`.
 
 ---
 
@@ -379,7 +408,7 @@ X-API-Key: test-api-key
 
 ---
 
-## Running Tests
+## Tests
 
 The test suite uses a dedicated SQLite database so that tests remain isolated from the development PostgreSQL database.
 
@@ -393,19 +422,16 @@ pytest -v
 The tests cover:
 
 - API authentication
-- Client creation
-- Duplicate client emails
-- Client retrieval
-- Order creation
-- Order status transitions
-- Invalid status transitions
-- Restrictions on modifying non-draft orders
-- Order line creation
+- Client management and duplicate email handling
+- Order creation and retrieval
+- Order status transition rules
+- Order line management
 - Quantity and price validation
 - Automatic order total recalculation
-- Order filtering
-- Pagination
+- Order filtering and pagination
 - Customer statistics
+- Invalid status transitions
+- Restrictions on modifying non-draft orders
 
 ---
 
@@ -422,68 +448,41 @@ tests/
 `-- test_stats.py
 ```
 
-A dedicated test database is used to avoid modifying the development database during test execution.
-
 The test suite focuses particularly on business rules and edge cases, rather than only testing successful HTTP requests.
 
 ---
 
 ## Docker
 
-The project includes a Docker configuration with two services:
+The project can be run with Docker Compose.
 
-```text
-+---------------------+
-|      FastAPI        |
-|       API           |
-|      :8000          |
-+----------+----------+
-           |
-           |
-+----------v----------+
-|     PostgreSQL      |
-|       :5432         |
-+---------------------+
+The Docker environment includes three services:
+
+- **db**: PostgreSQL 17
+- **api**: FastAPI application
+- **frontend**: React/Vite application
+
+### Start the Full Project
+
+From the project root:
+
+```bash
+docker compose up --build
 ```
 
-Docker Compose handles the application and database services together.
+The services are available at:
 
-The PostgreSQL data is stored in a Docker volume so that database data persists when containers are restarted.
+| Service | Address |
+| --- | --- |
+| Frontend | `http://localhost:5173` |
+| API | `http://localhost:8000` |
+| Swagger | `http://localhost:8000/docs` |
+| PostgreSQL | `localhost:5432` |
 
----
+To stop the containers:
 
-## Development
-
-The application can also be run locally without Docker for development and testing.
-
-The project uses environment variables for configuration, including:
-
-```text
-DATABASE_URL
-API_KEY
+```bash
+docker compose down
 ```
 
----
-
-## Key Technical Points
-
-The project focuses on several backend engineering principles:
-
-- Separation of concerns
-- Explicit business rules
-- Database integrity
-- Input validation
-- API authentication
-- Pagination
-- Automated testing
-- Database migrations
-- Containerization
-- Clear API documentation
-
-The main objective is to provide a maintainable backend rather than simply implementing the required endpoints.
-
----
-
-## Author
-
-Developed as part of a backend technical assessment.
+PostgreSQL data is persisted in a Docker volume named `postgres_data`.
