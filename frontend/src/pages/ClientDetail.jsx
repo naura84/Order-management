@@ -5,6 +5,8 @@ import {
   getClients,
   getClientStats,
   getCommandes,
+  updateClient,
+  deleteClient,
 } from "../services/api";
 
 function ClientDetail() {
@@ -13,6 +15,12 @@ function ClientDetail() {
   const [client, setClient] = useState(null);
   const [stats, setStats] = useState(null);
   const [commandes, setCommandes] = useState([]);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editNom, setEditNom] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -53,6 +61,66 @@ function ClientDetail() {
       style: "currency",
       currency: "EUR",
     }).format(Number(amount));
+  
+  const handleEdit = () => {
+  setEditNom(client.nom);
+  setEditEmail(client.email);
+  setActionError(null);
+  setIsEditing(true);
+};
+
+const handleCancelEdit = () => {
+  setIsEditing(false);
+  setActionError(null);
+};
+
+const handleSaveEdit = async () => {
+  try {
+    setActionLoading(true);
+    setActionError(null);
+
+    const updatedClient = await updateClient(id, {
+      nom: editNom,
+      email: editEmail,
+    });
+
+    setClient(updatedClient);
+    setIsEditing(false);
+  } catch (err) {
+    console.error(err);
+    setActionError(err.message);
+  } finally {
+    setActionLoading(false);
+  }
+};
+
+const handleDelete = async () => {
+  if (commandes.length > 0) {
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Supprimer définitivement le client "${client.nom}" ?`
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    setActionLoading(true);
+    setActionError(null);
+
+    await deleteClient(id);
+
+    window.location.href = "/clients";
+  } catch (err) {
+    console.error(err);
+    setActionError(err.message);
+  } finally {
+    setActionLoading(false);
+  }
+};
 
   const formatDate = (date) =>
     new Date(date).toLocaleDateString("fr-FR", {
@@ -96,6 +164,30 @@ function ClientDetail() {
           <h1>{client.nom}</h1>
 
           <p>{client.email}</p>
+        </div>
+
+        <div className="client-actions">
+          {!isEditing && (
+            <>
+              <button
+                className="secondary-button"
+                onClick={handleEdit}
+                disabled={actionLoading}
+              >
+                Modifier
+              </button>
+          
+              {commandes.length === 0 && (
+                <button
+                  className="danger-button"
+                  onClick={handleDelete}
+                  disabled={actionLoading}
+                >
+                  Supprimer
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
 
@@ -156,26 +248,74 @@ function ClientDetail() {
           </p>
         </div>
       </div>
-
+        
       <div className="detail-card client-info-card">
         <h2>Informations client</h2>
 
-        <div className="detail-info">
-          <div>
-            <span>Nom</span>
-            <strong>{client.nom}</strong>
+        {actionError && (
+          <div className="error-card">
+            {actionError}
           </div>
+        )}
 
-          <div>
-            <span>Email</span>
-            <strong>{client.email}</strong>
+        {isEditing ? (
+          <div className="client-edit-form">
+            <div>
+              <label htmlFor="nom">Nom</label>
+              <input
+                id="nom"
+                type="text"
+                value={editNom}
+                onChange={(e) => setEditNom(e.target.value)}
+              />
+            </div>
+        
+            <div>
+              <label htmlFor="email">Email</label>
+              <input
+                id="email"
+                type="email"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+              />
+            </div>
+        
+            <div className="client-edit-actions">
+              <button
+                className="primary-button"
+                onClick={handleSaveEdit}
+                disabled={actionLoading}
+              >
+                {actionLoading ? "Enregistrement..." : "Enregistrer"}
+              </button>
+        
+              <button
+                className="secondary-button"
+                onClick={handleCancelEdit}
+                disabled={actionLoading}
+              >
+                Annuler
+              </button>
+            </div>
           </div>
-
-          <div>
-            <span>Client depuis</span>
-            <strong>{formatDate(client.date_creation)}</strong>
+        ) : (
+          <div className="detail-info">
+            <div>
+              <span>Nom</span>
+              <strong>{client.nom}</strong>
+            </div>
+        
+            <div>
+              <span>Email</span>
+              <strong>{client.email}</strong>
+            </div>
+        
+            <div>
+              <span>Client depuis</span>
+              <strong>{formatDate(client.date_creation)}</strong>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className="orders-card">

@@ -51,6 +51,42 @@ export async function createClient(data) {
   return response.json();
 }
 
+export async function updateClient(id, data) {
+  const response = await fetch(`${API_URL}/clients/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": API_KEY,
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Impossible de modifier le client.");
+  }
+
+  return response.json();
+}
+
+export async function deleteClient(id) {
+  const response = await fetch(`${API_URL}/clients/${id}`, {
+    method: "DELETE",
+    headers: {
+      "X-API-Key": API_KEY,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(
+      error.detail || "Impossible de supprimer le client."
+    );
+  }
+
+  return response.json();
+}
+
 export async function getCommande(id) {
   return apiFetch(`/commandes/${id}`);
 }

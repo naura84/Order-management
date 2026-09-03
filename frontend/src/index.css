@@ -734,3 +734,44 @@ tbody tr:hover {
 .client-form .primary-button {
   margin-top: 4px;
 }
+.client-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 520px;
+  margin-top: 20px;
+}
+
+.client-edit-form > div:not(.client-edit-actions) {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.client-edit-form label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #344039;
+}
+
+.client-edit-form input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #d5ded8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2937;
+  outline: none;
+}
+
+.client-edit-form input:focus {
+  border-color: #2f6b4f;
+  box-shadow: 0 0 0 3px rgba(47, 107, 79, 0.08);
+}
+
+.client-edit-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  margin-top: 4px;
+}
