@@ -13,6 +13,7 @@ jobs:
         working-directory: backend
     env:
       API_KEY: test-api-key
+      DATABASE_URL: sqlite:///./test.db
     steps:
       - uses: actions/checkout@v4
 
