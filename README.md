@@ -1,48 +1,151 @@
-# Order Management API
+# Order Management
 
-Backend API for managing clients, orders, order lines, order statuses, and customer statistics.
+Full-stack order management application: a **FastAPI** REST API backed by **PostgreSQL**, with a **React** front end to manage clients, orders and order lines.
 
-The project was developed as part of a backend technical assessment, with a focus on code quality, business rules, database management, API design, testing, and containerization.
+Developed as part of a technical assessment, with a focus on business rules, code quality, database management, API design, testing and containerization.
+
+**Dashboard interface**
+
+![Dashboard interface](img/dashboard.png)
+
+**Order details interface**
+
+![Order details interface](img/order-details.png)
+
+**Customer statistics interface**
+
+![Customer statistics interface](img/Client-statistiques.png)
+
+## Table of contents
+
+- [Key features](#key-features)
+- [Quick start](#quick-start)
+- [Tech stack](#tech-stack)
+- [Architecture](#architecture)
+- [Data model](#data-model)
+- [Business rules](#business-rules)
+- [API](#api)
+- [Authentication](#authentication)
+- [Frontend](#frontend)
+- [Technical choices](#technical-choices)
+- [Database migrations and seed data](#database-migrations-and-seed-data)
+- [Local installation](#local-installation)
+- [Tests](#tests)
+- [Docker](#docker)
+- [Limitations and next steps](#limitations-and-next-steps)
 
 ---
 
-## Features
+## Key features
 
-- Client management
-- Order management
-- Order line management
+- Client, order and order line management
 - Controlled order status transitions
 - Automatic order total calculation
-- Customer statistics: order count, total amount, average basket, and most frequent status
-- Order filters by client, status, and minimum/maximum amount
-- Order pagination
+- Customer statistics: order count, total amount, average basket and most frequent status
+- Order filtering by client, status and minimum/maximum amount, with pagination
 - API key authentication
-- PostgreSQL database
-- SQLAlchemy ORM
-- Alembic database migrations
-- Automated tests
-- Docker and Docker Compose support
-- Seed data for development
+- React interface: dashboard, order and client lists, order creation, order details and client statistics
+- PostgreSQL database with SQLAlchemy ORM and Alembic migrations
+- Automated tests focused on business rules and edge cases
+- Docker and Docker Compose support, with seed data for development
 
 ---
 
-## Tech Stack
+## Quick start
 
-- **Python 3.14**
-- **FastAPI**
-- **Pydantic**
-- **SQLAlchemy**
-- **PostgreSQL**
-- **Alembic**
-- **Pytest**
-- **Docker / Docker Compose**
-- **React / Vite**
+From the project root:
+
+```bash
+docker compose up --build
+docker compose exec api alembic upgrade head
+docker compose exec api python -m app.database.seed
+```
+
+| Service | Address |
+| --- | --- |
+| Frontend | `http://localhost:5173` |
+| API | `http://localhost:8000` |
+| Swagger (API docs) | `http://localhost:8000/docs` |
+| PostgreSQL | `localhost:5432` |
+
+The API requires the `X-API-Key` header. With the default Docker Compose configuration:
+
+```http
+X-API-Key: test-api-key
+```
+
+To stop the containers:
+
+```bash
+docker compose down
+```
+
+PostgreSQL data is persisted in a Docker volume named `postgres_data`.
 
 ---
 
-## Data Model
+## Tech stack
 
-The application is based on three main entities:
+| Layer | Technologies |
+| --- | --- |
+| Backend | Python 3.14, FastAPI, Pydantic, SQLAlchemy, Alembic |
+| Database | PostgreSQL 17 |
+| Frontend | React, Vite |
+| Tests | Pytest (SQLite test database) |
+| Infrastructure | Docker, Docker Compose |
+
+---
+
+## Architecture
+
+The project is organized into three main layers:
+
+- **Frontend**: React application for viewing and managing clients, orders and order lines.
+- **Backend**: REST API developed with FastAPI, responsible for business logic, validation and data access.
+- **Database**: PostgreSQL, used to persist clients, orders and order lines.
+
+### Project structure
+
+```text
+order-management/
+├── backend/
+│   ├── app/
+│   │   ├── auth.py
+│   │   ├── database/
+│   │   ├── models/
+│   │   ├── routes/
+│   │   ├── schemas/
+│   │   └── services/
+│   ├── tests/
+│   ├── main.py
+│   ├── requirements.txt
+│   └── alembic.ini
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   └── services/
+│   ├── package.json
+│   └── Dockerfile
+│
+├── Dockerfile
+├── docker-compose.yml
+└── README.md
+```
+
+### Backend layers
+
+- **Routes**: receive HTTP requests, validate request parameters, call the appropriate service and return HTTP responses.
+- **Services**: contain the business rules (client validation, order creation, status transition validation, order line restrictions, automatic total recalculation, statistics). Keeping business logic outside the routes makes the application easier to test, maintain and evolve.
+- **Models**: SQLAlchemy models representing the database entities and their relationships.
+- **Schemas**: Pydantic schemas validating API inputs and structuring API responses.
+
+---
+
+## Data model
+
+The application is based on three main entities (the domain model uses French names: `Commande` = order, `LigneCommande` = order line):
 
 ```text
 Client
@@ -52,35 +155,15 @@ Client
                     +-- 1 --- N --- LigneCommande
 ```
 
-### Client
+**Client**: `id`, `nom`, `email` (unique), `date_creation`
 
-- `id`
-- `nom`
-- `email` (unique)
-- `date_creation`
+**Commande**: `id`, `client_id`, `statut`, `date_commande`, `montant_total`
 
-### Commande
-
-- `id`
-- `client_id`
-- `statut`
-- `date_commande`
-- `montant_total`
-
-### LigneCommande
-
-- `id`
-- `commande_id`
-- `reference_article`
-- `libelle`
-- `quantite`
-- `prix_unitaire`
+**LigneCommande**: `id`, `commande_id`, `reference_article`, `libelle`, `quantite`, `prix_unitaire`
 
 ---
 
-## Business Rules
-
-The application implements the following business rules:
+## Business rules
 
 ### Order status
 
@@ -131,34 +214,23 @@ Once an order is **livrée** or **annulée**, its status cannot be changed.
 | `GET` | `/commandes/{id}` | Retrieve an order with its lines |
 | `GET` | `/commandes` | List paginated orders with optional filters |
 
+The order listing supports the following query parameters: `client_id`, `statut`, `montant_min`, `montant_max`, `page` and `page_size`.
+
+Pagination is implemented on `GET /commandes`. The response provides the requested items, the total number of orders, the current page, the page size and the total number of pages, which prevents the API from returning an unnecessarily large number of records in a single request.
+
 ### Statistics
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
-| `GET` | `/stats/clients/{id}` | Retrieve the number of orders, total amount ordered, average basket, and most frequent status |
+| `GET` | `/stats/clients/{id}` | Number of orders, total amount ordered, average basket and most frequent status |
 
-The order listing supports:
-
-- `client_id`
-- `statut`
-- `montant_min`
-- `montant_max`
-- `page`
-- `page_size`
+Interactive Swagger documentation is available at `http://localhost:8000/docs` once the application is running.
 
 ---
 
 ## Authentication
 
-The API uses a simple API key authentication mechanism through the `X-API-Key` HTTP header.
-
-The key is configured through the `API_KEY` environment variable.
-
-Example:
-
-```http
-X-API-Key: test-api-key
-```
+The API uses a simple API key mechanism through the `X-API-Key` HTTP header. The key is configured through the `API_KEY` environment variable rather than being hard-coded.
 
 The authentication dependency is applied at router level so that protected endpoints consistently require authentication.
 
@@ -166,177 +238,50 @@ This approach was chosen because the technical assessment requires a basic authe
 
 ---
 
-## Architecture
-
-The project is organized into three main layers:
-
-- **Frontend**: React application for viewing and managing clients, orders, and order lines.
-- **Backend**: REST API developed with FastAPI, responsible for business logic, validation, and data access.
-- **Database**: PostgreSQL used to persist clients, orders, and order lines.
-
-### Project Structure
-
-```text
-order-management/
-├── backend/
-│   ├── app/
-│   │   ├── auth.py
-│   │   ├── database/
-│   │   ├── models/
-│   │   ├── routes/
-│   │   ├── schemas/
-│   │   └── services/
-│   ├── tests/
-│   ├── main.py
-│   ├── requirements.txt
-│   └── alembic.ini
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   └── services/
-│   ├── package.json
-│   └── Dockerfile
-│
-├── Dockerfile
-├── docker-compose.yml
-└── README.md
-```
-
-### Routes
-
-The route layer is responsible for:
-
-- Receiving HTTP requests
-- Validating request parameters
-- Calling the appropriate service
-- Returning HTTP responses
-
-### Services
-
-Business rules are handled in dedicated service modules.
-
-This includes:
-
-- Client validation
-- Order creation
-- Status transition validation
-- Order line restrictions
-- Automatic total recalculation
-- Statistics calculations
-
-Keeping business logic outside the routes makes the application easier to test, maintain, and evolve.
-
-### Models
-
-SQLAlchemy models represent the database entities and their relationships.
-
-### Schemas
-
-Pydantic schemas validate API inputs and structure API responses.
-
 ## Frontend
 
-The frontend is developed with React and Vite.
-
-It allows users to:
+The frontend is developed with React and Vite. It allows users to:
 
 - View the dashboard
-- View the order list
-- Search and filter orders by client, status, and amount
-- Navigate between order pages
-- View order details
-- Add lines to an order
-- Create a new order
-- View registered clients
-- Create a new client
-- View client details and statistics
-- Track order status transitions
+- View the order list, search and filter orders by client, status and amount, and navigate between pages
+- View order details and track order status transitions
+- Create a new order and add lines to an order
+- View registered clients, create a new client, and view client details and statistics
 
-### Main Pages
+### Main pages
 
-- `/` - Dashboard
-- `/commandes` - Order list
-- `/commandes/nouvelle` - Create an order
-- `/commandes/{id}` - Order details
-- `/commandes/{id}/lignes/nouvelle` - Add an order line
-- `/clients` - Client list and client creation
-- `/clients/{id}` - Client details and statistics
+| Route | Page |
+| --- | --- |
+| `/` | Dashboard |
+| `/commandes` | Order list |
+| `/commandes/nouvelle` | Create an order |
+| `/commandes/{id}` | Order details |
+| `/commandes/{id}/lignes/nouvelle` | Add an order line |
+| `/clients` | Client list and client creation |
+| `/clients/{id}` | Client details and statistics |
 
 ---
 
-## Technical Choices
+## Technical choices
 
-### FastAPI
-
-FastAPI was chosen for its lightweight architecture, automatic OpenAPI documentation, Pydantic integration, and dependency injection system.
-
-It also provides an interactive Swagger interface, which makes it easy to test and explore the API during development.
-
-### PostgreSQL
-
-PostgreSQL was selected as the main database because the application relies on a relational data model involving clients, orders, and order lines.
-
-It provides strong support for relational constraints, transactions, data integrity, and structured queries.
-
-### SQLAlchemy
-
-SQLAlchemy provides the ORM layer used to interact with PostgreSQL.
-
-It allows the application to define explicit relationships between clients, orders, and order lines while keeping database operations separated from the HTTP layer.
-
-### Alembic
-
-Alembic is used to manage database schema migrations.
-
-This allows database changes to be versioned and applied consistently across environments.
-
-### Routes / Services Separation
-
-Routes focus on HTTP concerns while services contain business rules.
-
-This separation improves readability, testability, and maintainability and avoids putting complex business logic directly inside API endpoints.
-
-### API Key Authentication
-
-A simple API key was chosen because the assessment requires basic authentication without requiring a complete authentication and user-management system.
-
-The key is stored in an environment variable rather than being hard-coded into the application logic.
-
-### Pagination
-
-Pagination is implemented on `GET /commandes` using `page` and `page_size`.
-
-The response provides:
-
-- The requested items
-- Total number of orders
-- Current page
-- Page size
-- Total number of pages
-
-Pagination prevents the API from returning an unnecessarily large number of records in a single request.
+- **FastAPI**: lightweight architecture, automatic OpenAPI documentation, Pydantic integration and a dependency injection system. The interactive Swagger interface makes the API easy to test and explore during development.
+- **PostgreSQL**: the application relies on a relational data model (clients, orders, order lines). PostgreSQL provides strong support for relational constraints, transactions, data integrity and structured queries.
+- **SQLAlchemy**: ORM layer defining explicit relationships between clients, orders and order lines while keeping database operations separated from the HTTP layer.
+- **Alembic**: versioned database schema migrations, applied consistently across environments.
+- **Routes / services separation**: routes focus on HTTP concerns while services contain business rules, which improves readability, testability and maintainability.
+- **API key authentication**: a simple key stored in an environment variable, sufficient for the assessment requirements.
 
 ---
 
-## Database Migrations
+## Database migrations and seed data
 
-Alembic is used to create and update the database schema.
-
-To apply the migrations:
+Alembic is used to create and update the database schema. Once the containers are running:
 
 ```bash
 docker compose exec api alembic upgrade head
 ```
 
----
-
-## Seed Data
-
-The project includes a seed script that creates sample clients, orders, and order lines.
-
-Once the containers are running:
+The project includes a seed script that creates sample clients, orders and order lines:
 
 ```bash
 docker compose exec api python -m app.database.seed
@@ -346,11 +291,9 @@ The seed script does not insert duplicate initial data if clients already exist 
 
 ---
 
-## Installation
+## Local installation
 
-### Local Installation
-
-#### Backend
+### Backend
 
 From the project root:
 
@@ -372,11 +315,9 @@ Start the API:
 uvicorn main:app --reload
 ```
 
-The API is available at `http://localhost:8000`.
+The API is available at `http://localhost:8000` and the Swagger documentation at `http://localhost:8000/docs`.
 
-Swagger documentation is available at `http://localhost:8000/docs`.
-
-#### Frontend
+### Frontend
 
 In another terminal:
 
@@ -387,24 +328,6 @@ npm run dev
 ```
 
 The frontend is available at `http://localhost:5173`.
-
----
-
-## API Documentation
-
-Once the application is running, the interactive Swagger documentation is available at:
-
-```text
-http://localhost:8000/docs
-```
-
-The API requires the `X-API-Key` header.
-
-With the default Docker Compose configuration:
-
-```http
-X-API-Key: test-api-key
-```
 
 ---
 
@@ -419,24 +342,6 @@ pip install -r requirements.txt
 pytest -v
 ```
 
-The tests cover:
-
-- API authentication
-- Client management and duplicate email handling
-- Order creation and retrieval
-- Order status transition rules
-- Order line management
-- Quantity and price validation
-- Automatic order total recalculation
-- Order filtering and pagination
-- Customer statistics
-- Invalid status transitions
-- Restrictions on modifying non-draft orders
-
----
-
-## Testing Strategy
-
 The tests are organized by feature:
 
 ```text
@@ -448,41 +353,33 @@ tests/
 `-- test_stats.py
 ```
 
-The test suite focuses particularly on business rules and edge cases, rather than only testing successful HTTP requests.
+They focus particularly on business rules and edge cases, rather than only testing successful HTTP requests. They cover:
+
+- API authentication
+- Client management and duplicate email handling
+- Order creation and retrieval
+- Order status transition rules, including invalid transitions
+- Order line management, quantity and price validation
+- Automatic order total recalculation
+- Order filtering and pagination
+- Customer statistics
+- Restrictions on modifying non-draft orders
 
 ---
 
 ## Docker
 
-The project can be run with Docker Compose.
-
-The Docker environment includes three services:
+The project can be run with Docker Compose. The Docker environment includes three services:
 
 - **db**: PostgreSQL 17
 - **api**: FastAPI application
 - **frontend**: React/Vite application
 
-### Start the Full Project
+See [Quick start](#quick-start) to launch the full project.
 
-From the project root:
+---
 
-```bash
-docker compose up --build
-```
+## Limitations and next steps
 
-The services are available at:
-
-| Service | Address |
-| --- | --- |
-| Frontend | `http://localhost:5173` |
-| API | `http://localhost:8000` |
-| Swagger | `http://localhost:8000/docs` |
-| PostgreSQL | `localhost:5432` |
-
-To stop the containers:
-
-```bash
-docker compose down
-```
-
-PostgreSQL data is persisted in a Docker volume named `postgres_data`.
+- Authentication relies on a single API key, as required by the assessment. A user-management system with JWT would be the natural evolution.
+- Running the test suite automatically on every push (GitHub Actions) would complete the quality setup.
