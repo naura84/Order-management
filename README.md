@@ -1,5 +1,9 @@
 # Order Management
 
+# Order Management
+
+![Tests](https://github.com/naura84/Oreder-management/actions/workflows/tests.yml/badge.svg)
+
 Full-stack order management application: a **FastAPI** REST API backed by **PostgreSQL**, with a **React** front end to manage clients, orders and order lines.
 
 Developed as part of a technical assessment, with a focus on business rules, code quality, database management, API design, testing and containerization.
@@ -382,4 +386,3 @@ See [Quick start](#quick-start) to launch the full project.
 ## Limitations and next steps
 
 - Authentication relies on a single API key, as required by the assessment. A user-management system with JWT would be the natural evolution.
-- Running the test suite automatically on every push (GitHub Actions) would complete the quality setup.
